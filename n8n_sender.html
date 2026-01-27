@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pam-Thaïlande n8n Sender</title>
+    <!-- Bootstrap CSS for styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            padding: 2rem;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        #status-message {
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card shadow-sm">
+            <h1 class="mb-4 text-center">Envoyeur de Métadonnées <br> pour <a href="https://www.youtube.com/@pam-thailande" target="_blank">Pam-Thaïlande</a></h1>
+            <form id="n8n-form">
+                <div class="mb-3">
+                    <label for="webhook_url" class="form-label">URL du Webhook n8n</label>
+                    <input type="text" class="form-control" id="webhook_url" value="https://n8n.graphikarts.fr/webhook-test/4c5f6218-6a3f-4d30-9aa1-40b03e256091" required>
+                </div>
+                 <div class="mb-3">
+                    <label for="video_url" class="form-label">URL de la vidéo</label>
+                    <input type="text" class="form-control" id="video_url" required>
+                </div>
+                <div class="mb-3">
+                    <label for="title" class="form-label">Titre</label>
+                    <input type="text" class="form-control" id="title" maxlength="70" required>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" rows="15" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="tags" class="form-label">Tags (séparés par des virgules)</label>
+                    <input type="text" class="form-control" id="tags" required>
+                </div>
+                <div class="mb-3">
+                    <label for="location" class="form-label">Lieu</label>
+                    <input type="text" class="form-control" id="location" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2 mt-3">Envoyer à n8n</button>
+            </form>
+            <div id="status-message" class="alert" role="alert"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- PRÉ-REMPLISSAGE DES DONNÉES ---
+        const jsonData = {
+          "video_url": "https://www.youtube.com/watch?v=H77PEbBC3LQ",
+          "title": "Pêche au Mérou & Rencontre Magique à Koh Tao 🇹🇭🐟✨",
+          "description": `Une soirée comme on les aime à Koh Tao ! 🏝️ On commence avec une session de pêche mémorable avec 'Best', le meilleur pêcheur de l'île, où l'on attrape un magnifique mérou. La magie continue avec une rencontre totalement improvisée sur la plage avec Stefan et Salah, un couple adorable. Entre la musique, les rires et le partage, on décide de faire cuisiner notre poisson dans un restaurant local pour un dîner inoubliable. Une véritable aventure humaine et une tranche de vie authentique en Thaïlande !
+
+---
+
+CHAPITRES :
+00:22 - Début de soirée sur la plage
+04:23 - La pêche miraculeuse au mérou
+05:49 - Ambiance musicale les pieds dans le sable
+08:07 - Rencontre inattendue avec Stefan et Salah
+09:12 - Mission : trouver un restaurant !
+15:22 - Négociation pour un dîner parfait
+18:52 - Fin de soirée en musique
+
+---
+
+**Le saviez-vous ?** 🤓
+Koh Tao, le décor de notre aventure, signifie littéralement "l'Île de la Tortue" en thaï, car ses eaux étaient autrefois peuplées de nombreuses tortues marines ! Avant de devenir un paradis pour les plongeurs (c'est l'un des endroits qui certifie le plus de plongeurs au monde), l'île servait de prison politique dans les années 1940. Une histoire riche pour un si petit bout de paradis !
+
+---
+
+Si vous avez aimé cette rencontre et cette ambiance authentique, n'oubliez pas de liker la vidéo, de la partager et surtout de vous abonner à la chaîne Pam-Thaïlande pour ne manquer aucune de nos aventures ! 🙏`,
+          "tags": [
+            "koh tao", "thailande", "voyage thailande", "pêche en mer", "pêche au mérou", "grouper fishing", "rencontre voyage", "plage koh tao", "sairee beach", "dîner insolite", "aventure thailande", "backpacker thailande", "poisson frais", "pam-thailande"
+          ],
+          "location": "Koh Tao, Thaïlande"
+        };
+
+        document.getElementById('video_url').value = jsonData.video_url;
+        document.getElementById('title').value = jsonData.title;
+        document.getElementById('description').value = jsonData.description;
+        document.getElementById('tags').value = jsonData.tags.join(', ');
+        document.getElementById('location').value = jsonData.location;
+        
+        // --- LOGIQUE D'ENVOI DU FORMULAIRE ---
+        const form = document.getElementById('n8n-form');
+        const statusMessage = document.getElementById('status-message');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Envoi en cours...';
+            statusMessage.style.display = 'none';
+            
+            const webhookUrl = document.getElementById('webhook_url').value;
+
+            const payload = {
+                video_url: document.getElementById('video_url').value,
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
+                location: document.getElementById('location').value
+            };
+
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                // Handle non-2xx responses
+                return response.text().then(text => { throw new Error(`Erreur ${response.status}: ${text}`) });
+            })
+            .then(data => {
+                console.log('Success:', data);
+                statusMessage.className = 'alert alert-success';
+                statusMessage.textContent = 'Succès ! Les données ont été envoyées à n8n. Message de n8n : ' + (data.message || JSON.stringify(data));
+                statusMessage.style.display = 'block';
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                statusMessage.className = 'alert alert-danger';
+                statusMessage.textContent = 'Erreur lors de l\'envoi : ' + error.message;
+                statusMessage.style.display = 'block';
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Envoyer à n8n';
+            });
+        });
+    </script>
+</body>
+</html>
